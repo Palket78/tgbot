@@ -1,6 +1,9 @@
 ### Файл с реализцией клавиатурных и инлайн кнопок ###
 
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.types import BotCommand
+from aiogram import Bot
+
 
 # Основная клавиатура с кнопками исполнения команд 
 kb = ReplyKeyboardMarkup(keyboard=[[KeyboardButton(text = '👤Профиль')], # Исполнение /profile
@@ -29,3 +32,15 @@ btn_number = ReplyKeyboardMarkup(keyboard=[[KeyboardButton(text='Отправи�
 # Инлайн кнопка с ссылкой в главном меню после исполнения /start
 btn_menu_start = InlineKeyboardMarkup(inline_keyboard=[
     [InlineKeyboardButton(text = 'Подписаться на канал!', callback_data='menu_start', url='https://t.me/+md2DggzeBkc4MjM6')]])
+
+# Фунция создания быстрого меню команд 
+async def set_main_menu(bot: Bot):
+    main_menu_commands = [
+        BotCommand(command="/start", description="Перезапуск бота"),
+        BotCommand(command="/profile", description="Мой аккаунт"),
+        BotCommand(command="/help", description="Основная Информация"),
+        BotCommand(command="ask", description="Техническая Поддержка")
+        ]     
+    await bot.set_my_commands(main_menu_commands)
+
+        

@@ -1,7 +1,7 @@
 ### Файл с реализацией хендлеров ###
 
 from aiogram import types
-from aiogram.types import Message
+from aiogram.types import Message, KeyboardButton
 from aiogram.filters.command import Command, CommandStart
 from aiogram import Router, F
 from aiogram.fsm.state import State, StatesGroup
@@ -11,7 +11,9 @@ import sqlite3
 import keyb as keyboard # Импортируем файл с кнопками
 import texts as txt # Импортируем файл с текстами
 import data_base.req as rq # Подключаем файл с реализацией функций внесесения пользователей в БД
+from config_file import config
 
+admin = config.admins
 rt = Router() # Отделяем файл с хендлерами от остальных модулей
 
 # Класс регистрации пользователя по параметрам: Имя, Номер телефона
@@ -34,6 +36,8 @@ async def cmd_start(message: types.Message):
         await rq.set_user(message.from_user.id)
         await message.reply("Приветствую!")
         await message.answer('Выберите язык интерфейса',reply_markup=keyboard.btn_langMenu)
+    if message.from_user.id == admin and user_id_massive:
+        await message.answer('Вы авторизованы как Администратор!')
 
 # Обработчик для команды /help и кнопки F.A.Q.
 @rt.message(Command("help"))
@@ -46,6 +50,7 @@ async def cmd_help(message: types.Message):
 async def cmd_ask(message: types.Message):
     txt_2 = txt.text_2 # Текст с адресом на Тех.поддержку
     await message.answer(txt_2)
+    await message.answer(admin)
 
 # Обработчик для команды /profile и кнопки Профиль
 @rt.message(Command("profile"))
