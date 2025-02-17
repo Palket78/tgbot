@@ -1,3 +1,5 @@
+### ФАЙЛ ДЛЯ РАБОТЫ С ВОПРОСНО-ОТВЕТНЫМИ ПАРАМИ ###
+
 import aiosqlite
 import logging
 

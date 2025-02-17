@@ -1,10 +1,29 @@
+### ФАЙЛ С MIDDLEWARE ###
+
 import sqlite3
 
 from aiogram import BaseMiddleware
 from typing import Callable, Dict, Any, Awaitable
 from aiogram.types import Message, TelegramObject
 
+# Middleware для исполнение блокировки пользоватея
+class BanUserMiddleware(BaseMiddleware):
+    def __init__(self):
+        self.con2 = sqlite3.connect('db.sqlite3')
+        self.cursor2 = self.con2.cursor()
 
+    async def __call__(self,
+                       handler: Callable[[Message, Dict[str, Any]], Awaitable[Any]],
+                       event: TelegramObject,
+                       data: Dict[str, Any]) -> Any:
+        ban_id = data["event_from_user"].id
+        banned = self.cursor2.execute(f"SELECT block_tg_id FROM blocked WHERE block_tg_id = {data['event_from_user'].id}").fetchall()
+        if ban_id in banned:
+            return await event.bot.send_message('Вы были заблокированы!')
+        else:
+            return await handler(event,data)
+
+# Основной Middleware для проверки по вайт-листу
 class AccessMiddleware(BaseMiddleware):
     def __init__(self):
         super().__init__()
@@ -22,19 +41,4 @@ class AccessMiddleware(BaseMiddleware):
         else:
              return await handler(event, data) 
         
-class BanUserMiddleware(BaseMiddleware):
-    def __init__(self):
-        self.con2 = sqlite3.connect('db.sqlite3')
-        self.cursor2 = self.con2.cursor()
 
-    async def __call__(self,
-                       handler: Callable[[Message, Dict[str, Any]], Awaitable[Any]],
-                       event: TelegramObject,
-                       data: Dict[str, Any]) -> Any:
-        ban_id = data["event_from_user"].id
-        banned = self.cursor2.execute(f"SELECT blocked_tg_id FROM blocked WHERE blocked_tg_id = {data['event_from_user'].id}").fetchone()
-        if ban_id in banned:
-            return
-        else:
-            return await handler(event,data)
-        

@@ -1,5 +1,4 @@
 .venv
-translation.py
 __pycache__
 .env
-sqlite3.db 
+db.sqlite3

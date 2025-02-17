@@ -1,3 +1,5 @@
+### ФАЙЛ ФИЛЬТРА ДЛЯ ПРОВЕРКИ ПОЛЬЗОВАТЕЛЯ НА АДМИНА ###
+
 from aiogram.types import Message
 from aiogram.filters import BaseFilter
 
