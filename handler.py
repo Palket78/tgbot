@@ -2,10 +2,10 @@
 
 import requests
 import sqlite3
-import aiosqlite
+import re
 
 from aiogram import types, Router, F, Bot
-from aiogram.types import Message
+from aiogram.types import Message, FSInputFile
 from aiogram.filters.command import Command, CommandStart
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.fsm.context import FSMContext
@@ -14,14 +14,13 @@ from aiogram.filters import StateFilter
 from config_file import config # Импортируем файл для работы с .env
 import keyb as keyboard # Импортируем файл с кнопками
 import texts as txt # Импортируем файл с текстами
-import data_base.req as rq # Подключаем файл с реализацией функций внесесения пользователей в БД
-import data_base.que_reply as qr # Подключаем тогда, когда хотим затестить вопросно-ответные пары из БД
+import data_base.req as rq # Подключаем файл с реализацией функций внесесения пользователей в БД  # Подключаем тогда, когда хотим затестить вопросно-ответные пары из БД
 from middlewares import AccessMiddleware, BanUserMiddleware # Импорт MW
 from filters import checkAdminFilter, adm # Импорт фильтра проверки на админа
 from test import ai_text # Импорт обучалки
 
-
-admin = config.admins
+admin = [int(x.strip()) for x in config.admins.strip().split(',')]
+#[int(x) for x in config.admins.split(',')]
 rt = Router() # Отделяем файл с хендлерами от остальных модулей
 rt.message.middleware(AccessMiddleware()) # Подключение пропускного миддлвэйра к роутеру
 rt.message.middleware(BanUserMiddleware()) # Подключение бан-миддлвэйра к роутеру
@@ -36,13 +35,6 @@ class dialog(StatesGroup):
     ban = State()
     unban = State()
 
-# Функция для получения ответа на заданный вопрос из бд(отключена от работы)
-#async def get_answer(question):
-    #async with aiosqlite.connect('vopros_otvet.db') as qr.conn: # Открываем асинхронное соединение с базой данных 'vopros_otvet.db'
-        #async with qr.conn.execute("SELECT answer FROM menu WHERE question=?", (question,)) as cursor:  # Выполняем асинхронный SQL-запрос для извлечения ответа на заданный вопрос
-            #result = await cursor.fetchone() # Извлекаем первую строку результата запроса
-            #return result[0] if result else None  # Если результат существует, возвращаем ответ, иначе возвращаем None
-
 # Обработчик для команды /start
 @rt.message(CommandStart())
 async def cmd_start(message: types.Message):
@@ -55,10 +47,10 @@ async def cmd_start(message: types.Message):
         await message.reply('Вы в главном меню!') 
         await message.answer(txt_3, reply_markup=keyboard.btn_menu_start)
     else: # Если пользователь не найден, записываем его в БД и наводим на регистрацию
-        await message.reply("Приветствую!")
-        await message.answer('Пройдите регистрацию в боте! ',reply_markup=keyboard.btn_reg)
-    if message.from_user.id == admin and user_id_massive: # Проверка пользователя на админа
-        await message.answer('Вы авторизованы как Администратор!',reply_markup=keyboard.kb_admin)
+        await message.reply("Приветствую! Добро пожаловать в чат-бота от Красинтегра!")
+        await message.answer('Пройдите регистрацию в боте, чтобы пользоваться функционалом.',reply_markup=keyboard.btn_reg)
+    if message.from_user.id in admin and user_id_massive: # Проверка пользователя на админа
+        await message.answer('👮‍♂️ Вы авторизованы как Администратор!',reply_markup=keyboard.kb_admin)
 
 # Обработчик для кнопки "Админ Панель" + проверка на админа
 @rt.message(checkAdminFilter(adm), F.text == '💼Админ Панель')
@@ -67,24 +59,29 @@ async def admin_commands(message: types.Message):
 
 # Обработчик для команды /help и кнопки F.A.Q.
 @rt.message(Command("help"),StateFilter(None))
-@rt.message(F.text.contains('F.A.Q'))
+@rt.message(F.text.contains('F.A.Q'),StateFilter(None))
 async def cmd_help(message: types.Message):
     txt_1 = txt.text_1 # Текст с помощью
     await message.answer(txt_1)
 
 # Обработчик для команды /ask 
-@rt.message(Command("ask"), StateFilter(None))
+@rt.message(Command("ask"),StateFilter(None))
 async def cmd_ask(message: types.Message):
     txt_2 = txt.text_2 # Текст с адресом на Тех.поддержку
     await message.answer(txt_2)
 
 # Обработчик для команды /profile и кнопки Профиль
 @rt.message(Command("profile"),StateFilter(None))
-@rt.message(F.text.contains('Профиль'))
+@rt.message(F.text.contains('Профиль'),StateFilter(None))
 async def send_profile(message: types.Message):
+    con5 = sqlite3.connect('db.sqlite3') # Подключаемся к бд
+    cursor5 = con5.cursor() # Создаем курсор 
+    cursor5.execute('''SELECT name, number FROM users''')
+    len_tg = cursor5.fetchall()
     user_id = message.from_user.id # Получаем ID пользователя
     user_name = message.from_user.full_name # Получаем Имя пользователя
-    response = f"👤 Имя пользователя: {user_name}\n🔖 ID пользователя: {user_id}" # Готовим ответ
+    for name, number in len_tg:
+      response = f"👤 Имя пользователя: {user_name}\n\n🔖 ID пользователя: {user_id}\n\n📃 ФИО Пользователя: {name}\n\n☎️ Номер Пользователя: {number}" # Готовим ответ
     await message.reply(response)
 
 # Обработчик для команды /order_cert из Быстрого меню
@@ -95,17 +92,17 @@ async def send_sert(message: types.Message):
 # Обработчик для команды /write_note из Быстрого меню
 @rt.message(Command("write_note"),StateFilter(None))
 async def link_docs(message: types.message):
-    await message.answer('Ссылки на образцы документов: ')
+    await message.answer('Ссылки на образцы документов: https://drive.google.com/drive/folders/1QRCZIoHT_Ctd-e3XQgH1FKe6mHZh8-Dh?usp=sharing')
 
 # Обработчик для команды /hospital из Быстрого меню
 @rt.message(Command("hospital"),StateFilter(None))
 async def sick_leave(message: types.Message):
-    await message.answer("<a href = 'https://t.me/hr_krasintegra'>HR Krasintegra</a>",parse_mode = 'HTML')
+    await message.answer("Узнать информацию по больничному можно у <a href = 'https://t.me/hr_krasintegra'>HR Krasintegra</a>",parse_mode = 'HTML')
 
 # Обработчик для команды /life_circum из Быстрого меню
 @rt.message(Command('life_circum'),StateFilter(None))
 async def send_life(message: types.Message):
-    await message.answer('Перейдите по этой ссылке, чтобы узнать подробности: ')
+    await message.answer("Перейдите по этой <a href ='https://sfr.gov.ru/grazhdanam/families_with_children'>ссылке</a>, чтобы узнать подробности", parse_mode = 'HTML')
 
 # Обработчик для команды /my_vac из Быстрого меню
 @rt.message(Command("my_vac"),StateFilter(None))
@@ -118,7 +115,7 @@ async def info_term(message: types.Message):
     await message.answer('Выбери одну из опций:',reply_markup=keyboard.btn_my_term)
 
 # Обработчик для кнопки Настройки 
-@rt.message(F.text == '⚙️Настройки')
+@rt.message(F.text == '⚙️Настройки',StateFilter(None))
 async def cmd_settings(message: types.Message):
     await message.answer('В этом разделе вы можете изменить настройки!',reply_markup=keyboard.btn_settings) # Подключаем инлайн кнопку с выбором параметров
 
@@ -145,31 +142,68 @@ async def unban(callback: types. CallbackQuery, state: FSMContext):
 async def statistic(callback: types. CallbackQuery):
     con4 = sqlite3.connect('db.sqlite3') # Подключаемся к бд
     cursor4 = con4.cursor() # Создаем курсор 
-    cursor4.execute('''SELECT tg_id, name, number FROM users''') # Делаем запрос по базе
+    cursor4.execute('''SELECT tg_id, name, number, reg_date FROM users''') # Делаем запрос по базе
     users_tg = cursor4.fetchall() # Создаем список
     sum_users = len(set(id[0] for id in users_tg)) # Делаем подсчет юзеров по списку 
     if users_tg: # Вывод данных из колонок
         message = '👥Информация о базе данных пользователей\n\n'
-        for tg_id, name, number in users_tg:
+        for tg_id, name, number, reg_date in users_tg:
             message += (f"👤ID Пользователя: {tg_id}\n"
                         f"📝ФИО Пользователя: {name}\n"
-                        f"☎️Номер Пользователя: {number}"
+                        f"☎️Номер Пользователя: {number}\n"
+                        f"📅Дата регистрации: {reg_date}"
                         f"\n〰️〰️〰️〰️〰️〰️〰️〰️〰️\n\n")
         message += f"Всего пользователей в боте: {sum_users}"
     else:
         message = 'Нет данных о людях'
     await callback.message.answer(message) 
 
+# Обработчик для инлайн-кнопки 'Написать заявление'
+@rt.callback_query(F.data == 'write_vac')
+async def send_pdf(callback: types.CallbackQuery):
+    pdf_path = FSInputFile("C://Users//ADmin//Desktop//vacation.pdf")
+    await callback.message.answer_document(pdf_path, caption='Шаблон заявления на отпуск')
+
+# Обработчик для инлайн-кнопки 'Перенести заявление'
+@rt.callback_query(F.data == 'ret_m')
+async def send_pdf(callback: types.CallbackQuery):
+    pdf_path_2 = FSInputFile("C://Users//ADmin//Desktop//vac_transfer.pdf")
+    await callback.message.answer_document(pdf_path_2, caption='Шаблон заявления о переносе отпуска')
+
+# Обработчик для инлайн-кнопки 'Табель отпусков'
+@rt.callback_query(F.data == 'time_sheet')
+async def send_pdf(callback: types.CallbackQuery):
+    pdf_path_3 = FSInputFile("C://Users//ADmin//Desktop//vac_timesheet.pdf")
+    await callback.message.answer_document(pdf_path_3, caption='Табель отпусков на 2025 год')
+
+# Обработчик для инлайн-кнопки 'Чек-лист'
+@rt.callback_query(F.data == 'check_list')
+async def send_xslx(callback: types.CallbackQuery):
+    xslx_path = FSInputFile("C://Users//ADmin//Desktop//check_list.xlsx")
+    await callback.message.answer_document(xslx_path, caption='Чек-лист')
+
+# Обработчик для инлайн-кнопки ''Штатное расписание
+@rt.callback_query(F.data == 'staff')
+async def send_xls(callback: types.CallbackQuery):
+    xls_path = FSInputFile("C://Users//ADmin//Desktop//stuff_schedule.xls")
+    await callback.message.answer_document(xls_path, caption='Штатное расписание')
+
 # Обработчик для состояния блокировки юзера
 @rt.message(dialog.ban) 
 async def banan(message: types.Message, state: FSMContext):
     await state.update_data(ban=message.text) # Сохраняем ID в состоянии 
     data_ban = await state.get_data() # Получаем сохраненные данные
-    await message.answer('✅ Пользователь успешно заблокирован!')
-    await rq.set_ban(data_ban['ban']) # Заносим ID в БД
-    con2 = sqlite3.connect('db.sqlite3') # Подключение к БД
-    cursor2 = con2.cursor() # Создаем курсор для запросов
-    cursor2.execute(f'DELETE FROM allow_users WHERE allow_tg_id = ?', (data_ban['ban'],)) # Удаляем запись из вайтлиста
+    con2 = sqlite3.connect('db.sqlite3')
+    cur3 = con2.cursor()
+    cur3.execute(f"SELECT block_tg_id FROM blocked where block_tg_id = {data_ban['ban']}")
+    select_ban = cur3.fetchall()
+    if select_ban:
+        await message.answer('❌ Пользователь уже заблокирован!')
+    else:
+      await message.answer('✅ Пользователь успешно заблокирован!')
+      await rq.set_ban(data_ban['ban']) # Заносим ID в БД
+      cursor2 = con2.cursor() # Создаем курсор для запросов
+      cursor2.execute(f'DELETE FROM allow_users WHERE allow_tg_id = ?', (data_ban['ban'],)) # Удаляем запись из вайтлиста
     con2.commit() # Сохраняем
     await state.clear() # Чистим состояние
 
@@ -190,7 +224,11 @@ async def unbanan(message: types.Message, state: FSMContext):
 @rt.message(Register.name, F.text)
 async def reg_name(message: types.Message, state: FSMContext):
     if message.text.startswith('/'): # Условие проверки валидности данных
-        await message.answer('Нельзя использовать команды, пока не пройдете регистрацию!')
+        await message.answer('❌ Нельзя использовать команды во время регистрации!')
+        return
+    name_pattern = re.compile(r'^[А-ЯЁ][а-яё]+\s[А-ЯЁ][а-яё]+\s[А-ЯЁ][а-яё]+$') # Проверяем формат введеных данных на соответсвие 'ФИО'
+    if not name_pattern.match(message.text):
+        await message.answer('❌ Пожалуйста, введите имя в формате "Фамилия Имя Отчество" (например, Иванов Иван Иванович)')
         return
     await state.update_data(name=message.text) # Сохраняем имя в состоянии
     await state.set_state(Register.number) # Переход к состоянию ввода номера 
@@ -201,50 +239,56 @@ async def reg_name(message: types.Message, state: FSMContext):
 async def reg_num(message: Message, state: FSMContext):
     await state.update_data(number=message.contact.phone_number) # Сохраняем номер в состоянии
     data = await state.get_data() # Получаем сохраненные данные
-    await message.answer(f'Ваше имя: {data["name"]}\nНомер: {data["number"]}\nОбновите бота командой /start', reply_markup=keyboard.kb) # Отправляем текст с готовыми данными
+    await message.answer(f'Успешная регистрация! \nВаше имя: {data["name"]}\nВаш Номер: {data["number"]}\nОбновите бота командой /start', reply_markup=keyboard.kb) # Отправляем текст с готовыми данными
     await rq.set_user(message.from_user.id, data['name'], data['number']) # Заносим данные в БД
     await state.clear() # Очищаем
-
-# Обработчик для получения ответа на заданный вопрос(Отключен)
-#@rt.message()
-#async def handle_query(message: types.Message):
-    #answer = await get_answer(message.text)
-    #if answer:
-        #await message.answer(answer)
-    #else:
-        #await message.answer('Не могу найти ответ на данный вопрос!')
 
 # Обработчик для LLM
 @rt.message(StateFilter(None))
 async def message_handler(msg: Message, bot: Bot):
-    headers = {
-        'Content-Type': 'application/json',
-    }
 
-    json_data = {
-        'model': 'qwen2.5-7b-instruct-1m',
-        'messages': [
-            {
-                'role': 'system',
-                'content': ai_text,
-            }, 
-            {
-                'role': 'user',
-                'content': msg.text,
-            },
-        ],
-        'temperature': 0.8,
-        'max_tokens': -1,
-        'stream': False,
-    }
+    # Отправляем временное сообщение
+    temp_message = await bot.send_message(msg.chat.id, "Бот обрабатывает ваш запрос...")
+     # Отправляем статус "печатает"
+    await bot.send_chat_action(msg.chat.id, action="typing")
 
-    response = requests.post(config.llm_url, headers=headers, json=json_data)
-    data = response.json()
-    text = data['choices'][0]['message']['content']
+    try:
+        # Подготовка запроса к LLM
+        headers = {
+            'Content-Type': 'application/json',
+        }
 
-    await bot.send_message(msg.chat.id, text, parse_mode='Markdown')
+        json_data = {
+            'model': 'llama-3.2-3b-instruct',
+            'messages': [
+                {
+                    'role': 'system',
+                    'content': ai_text,
+                },
+                {
+                    'role': 'user',
+                    'content': msg.text,
+                },
+            ],
+            'temperature': 0.8,
+            'max_tokens': -1,
+            'stream': False,
+        }
 
+        # Отправка запроса к LLM
+        response = requests.post(config.llm_url, headers=headers, json=json_data)
+        data = response.json()
+        text = data['choices'][0]['message']['content'][:4000]
 
+        # Удаляем временное сообщение
+        await bot.delete_message(msg.chat.id, temp_message.message_id)
+        # Отправляем ответ от нейросети
+        await bot.send_message(msg.chat.id, text, parse_mode='Markdown')
+
+    except Exception as e:
+        # Удаляем временное сообщение в случае ошибки
+        await bot.delete_message(msg.chat.id, temp_message.message_id)
+        await bot.send_message(msg.chat.id, f"Произошла ошибка: ")
 
 
 

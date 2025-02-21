@@ -32,7 +32,7 @@ btn_reg = InlineKeyboardMarkup(inline_keyboard=[
 
 # Инлайн кнопка с ссылкой в главном меню после исполнения /start
 btn_menu_start = InlineKeyboardMarkup(inline_keyboard=[
-    [InlineKeyboardButton(text = 'Подписаться на канал!', callback_data='menu_start', url='https://t.me/+md2DggzeBkc4MjM6')]])
+    [InlineKeyboardButton(text = 'Подписаться на группу!', callback_data='menu_start', url='https://vk.com/krasintegra_it')]])
 
 # Инлайн кнопка для команды /my_vac
 btn_my_vac = InlineKeyboardMarkup(inline_keyboard=[
@@ -44,7 +44,7 @@ btn_my_vac = InlineKeyboardMarkup(inline_keyboard=[
 # Инлайн кнопка для команды /my_term
 btn_my_term = InlineKeyboardMarkup(inline_keyboard=[
     [InlineKeyboardButton(text = 'Чек-лист', callback_data='check_list')],
-    [InlineKeyboardButton(text = 'Штатное расписание',callback_data='staff',url = '')]])
+    [InlineKeyboardButton(text = 'Штатное расписание',callback_data='staff')]])
 
 # Инлайн кнопка для админ панели
 btn_admin = InlineKeyboardMarkup(inline_keyboard=[
@@ -65,7 +65,7 @@ async def set_main_menu(bot: Bot):
         BotCommand(command="/hospital",description="Мой больничный"),
         BotCommand(command="/life_circum",description="Жизненные обстоятельства"),
         BotCommand(command="/my_vac", description = "Мой отпуск"),
-        BotCommand(command ="/my_term",description = "Мой испытательный срок")
+        BotCommand(command="/my_term",description = "Мой испытательный срок")
         ]     
     await bot.set_my_commands(main_menu_commands)
 

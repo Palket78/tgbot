@@ -12,7 +12,7 @@ headers = {
 }
 
 json_data = {
-    'model': 'deepseek-r1-distill-qwen-7b',
+    'model': 'llama-3.2-3b-instruct',
     'messages': [
         {
             'role': 'system',
@@ -23,7 +23,7 @@ json_data = {
             'content': 'Introduce yourself.',
         },
     ],
-    'temperature': 0.7,
+    'temperature': 0.8,
     'max_tokens': -1,
     'stream': False,
 }
